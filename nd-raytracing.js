@@ -1,7 +1,6 @@
 const canvas = document.getElementsByTagName("canvas")[0];
 const ctx = canvas.getContext("2d");
 let canvasData;
-let start = Date.now();
 let buffers = {};
 
 function drawPixel(x, y, r, g, b, a = 255) {
@@ -82,12 +81,12 @@ function addVec(vecA, vecB) {
   return res;
 }
 
-function len(vec) {
-  let sum = 0;
-  for (let i = 0; i < vec.length; i++) {
-    sum += vec[i] * vec[i];
-  }
-  return Math.sqrt(sum + 1e-300);
+function colorEq(colorA, colorV) {
+  return (
+    colorA[0] === colorV[0] &&
+    colorA[1] === colorV[1] &&
+    colorA[2] === colorV[2]
+  );
 }
 
 function sphereIntersection(origin, ray, spherePos, sphereR) {
@@ -183,15 +182,6 @@ function trace(objects, camPos, ray, lightPos) {
     const obj = objects[i];
     const point = sphereIntersection(camPos, ray, obj.pos, obj.radius);
 
-    // console.log(point);
-    // return mulScalar(obj.color, point);
-
-    // allIntersections.push({
-    //   pos: camPos,
-    //   center: obj.pos,
-    //   color: mulScalar(obj.color, point)
-    // });
-
     if (point) {
       allIntersections.push({
         pos: point,
@@ -230,34 +220,6 @@ function trace(objects, camPos, ray, lightPos) {
   return [220, 220, 220, 255];
 }
 
-function getAvg(colors) {
-  const len = colors.length;
-  let sum = colors[0];
-  for (var i = 1; i < len; i++) {
-    sum = addVec(sum, colors[i]);
-  }
-  return [sum[0] / len, sum[1] / len, sum[2] / len, (sum[3] || 0) / len];
-}
-
-function findMaxDeviation(colors, avg) {
-  avg = normalize(avg);
-  let maxDiv = -Infinity;
-  for (var i = 0; i < colors.length; i++) {
-    const color = normalize(colors[i]);
-    const div = Math.hypot(...subVec(color, avg));
-
-    if (div > maxDiv) {
-      maxDiv = div;
-      if (maxDiv > 250) {
-        // close enough
-        return maxDiv;
-      }
-    }
-  }
-
-  return maxDiv;
-}
-
 const dimension = 3;
 
 function padVec(vec, filler = 0) {
@@ -268,35 +230,15 @@ function padVec(vec, filler = 0) {
   return res;
 }
 
-const maxDeviationPerStep = {
-  [64]: 16,
-  [32]: 24,
-  [16]: 32,
-  [8]: 64,
-  [4]: 128,
-  [2]: 200,
-  [1]: 230
-};
-
 const camPos = padVec([-10, -2, 0], -10);
 const lightBasePos = padVec([-4, 0, 4], -3);
 
 const objects = stackSpheres(dimension);
 
-function nextFrame() {
-  return new Promise(function(resolve, reject) {
-    requestAnimationFrame(resolve);
-  });
-}
+let lastT = 0;
+function draw(t) {
+  let dt = t - lastT;
 
-function sleep(ms) {
-  return new Promise(function(resolve, reject) {
-    setTimeout(resolve, ms);
-  });
-}
-
-function draw() {
-  const t = Date.now() - start;
   const lightPos = addVec(
     lightBasePos,
     padVec(mulScalar(getRotation(t, 2000), 2), 0)
@@ -306,8 +248,6 @@ function draw() {
   let offsetY = (maxCanvasDim - canvas.height) / 2;
   let offsetX = (maxCanvasDim - canvas.width) / 2;
 
-  let smallestSample = Math.floor(maxCanvasDim / 250);
-
   let sampleCount = 0;
   function sample(x, y) {
     sampleCount++;
@@ -315,13 +255,53 @@ function draw() {
     return trace(objects, camPos, ray, lightPos);
   }
 
-  let step = Math.round(maxCanvasDim / 300);
+  let step = Math.round(maxCanvasDim / 200);
   for (let y = 0; y < canvas.height; y += step) {
     const relY = 1 - (y + offsetY) / maxCanvasDim;
-    for (let x = 0; x < canvas.width; x += step) {
+
+    for (let x = 0; x < canvas.width; x += step * 4) {
       const relX = (x + offsetX) / maxCanvasDim;
       const color = sample(relX, relY);
       drawPixels(step, x, y, ...color);
+    }
+
+    for (let x = step * 1; x < canvas.width; x += step * 4) {
+      let prev = getPixel(x - step * 1, y);
+      let next = getPixel(x + step * 3, y);
+
+      if (colorEq(prev, next)) {
+        drawPixels(step, x, y, ...prev);
+      } else {
+        const relX = (x + offsetX) / maxCanvasDim;
+        const color = sample(relX, relY);
+        drawPixels(step, x, y, ...color);
+      }
+    }
+
+    for (let x = step * 2; x < canvas.width; x += step * 4) {
+      let prev = getPixel(x - step * 2, y);
+      let next = getPixel(x + step * 2, y);
+
+      if (colorEq(prev, next)) {
+        drawPixels(step, x, y, ...prev);
+      } else {
+        const relX = (x + offsetX) / maxCanvasDim;
+        const color = sample(relX, relY);
+        drawPixels(step, x, y, ...color);
+      }
+    }
+
+    for (let x = step * 3; x < canvas.width; x += step * 4) {
+      let prev = getPixel(x - step * 3, y);
+      let next = getPixel(x + step * 1, y);
+
+      if (colorEq(prev, next)) {
+        drawPixels(step, x, y, ...prev);
+      } else {
+        const relX = (x + offsetX) / maxCanvasDim;
+        const color = sample(relX, relY);
+        drawPixels(step, x, y, ...color);
+      }
     }
   }
 
