@@ -315,80 +315,13 @@ function draw() {
     return trace(objects, camPos, ray, lightPos);
   }
 
-  let step = smallestSample * 6;
+  let step = Math.round(maxCanvasDim / 300);
   for (let y = 0; y < canvas.height; y += step) {
     const relY = 1 - (y + offsetY) / maxCanvasDim;
     for (let x = 0; x < canvas.width; x += step) {
       const relX = (x + offsetX) / maxCanvasDim;
       const color = sample(relX, relY);
-      drawPixel(x, y, ...color);
-    }
-  }
-
-  let subStep = smallestSample * 3;
-  for (let y = 0; y < canvas.height; y += step) {
-    for (let x = 0; x < canvas.width; x += step) {
-      let a = getPixel(x, y);
-      let b = getPixel(x + step, y);
-      let c = getPixel(x, y + step);
-      let d = getPixel(x + step, y + step);
-
-      const all = [];
-      if (a[0] !== undefined) all.push(a);
-      if (b[0] !== undefined) all.push(b);
-      if (c[0] !== undefined) all.push(c);
-      if (d[0] !== undefined) all.push(d);
-
-      const avg = getAvg(all);
-
-      const maxDeviation = findMaxDeviation(all, avg);
-
-      for (var yo = y; yo < y + step; yo += subStep) {
-        const relY = 1 - (yo + offsetY) / maxCanvasDim;
-        for (var xo = x; xo < x + step; xo += subStep) {
-          const relX = (xo + offsetX) / maxCanvasDim;
-          if (maxDeviation < 0.1) {
-            drawPixel(xo, yo, ...avg);
-          } else {
-            const color = sample(relX, relY);
-            drawPixel(xo, yo, ...color);
-          }
-        }
-      }
-    }
-  }
-
-  step = subStep;
-  subStep = smallestSample;
-  for (let y = 0; y < canvas.height; y += step) {
-    for (let x = 0; x < canvas.width; x += step) {
-      let a = getPixel(x, y);
-      let b = getPixel(x + step, y);
-      let c = getPixel(x, y + step);
-      let d = getPixel(x + step, y + step);
-
-      const all = [];
-      if (a[0] !== undefined) all.push(a);
-      if (b[0] !== undefined) all.push(b);
-      if (c[0] !== undefined) all.push(c);
-      if (d[0] !== undefined) all.push(d);
-
-      const avg = getAvg(all);
-
-      const maxDeviation = findMaxDeviation(all, avg);
-
-      for (var yo = y; yo < y + step; yo += subStep) {
-        const relY = 1 - (yo + offsetY) / maxCanvasDim;
-        for (var xo = x; xo < x + step; xo += subStep) {
-          const relX = (xo + offsetX) / maxCanvasDim;
-          if (maxDeviation < 0.1) {
-            drawPixels(subStep, xo, yo, ...avg);
-          } else {
-            const color = sample(relX, relY);
-            drawPixels(subStep, xo, yo, ...color);
-          }
-        }
-      }
+      drawPixels(step, x, y, ...color);
     }
   }
 
