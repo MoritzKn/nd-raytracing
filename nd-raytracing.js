@@ -236,25 +236,24 @@ function getAvg(colors) {
   for (var i = 1; i < len; i++) {
     sum = addVec(sum, colors[i]);
   }
-  return [sum[0] / len, sum[1] / len, sum[2] / len, (sum[3] || 0) / len];
+  return [sum[0] / len, sum[1] / len, sum[2] / len];
 }
 
 function findMaxDeviation(colors, avg) {
-  avg = normalize(avg);
   let maxDiv = -Infinity;
   for (var i = 0; i < colors.length; i++) {
-    const color = normalize(colors[i]);
-    const div = Math.hypot(...subVec(color, avg));
-
-    if (div > maxDiv) {
-      maxDiv = div;
-      if (maxDiv > 250) {
-        // close enough
-        return maxDiv;
+    const color = colors[i];
+    for (var j = 0; j < 3; j++) {
+      const div = Math.abs(color[i] - avg[i]);
+      if (div > maxDiv) {
+        maxDiv = div;
+        if (maxDiv > 250) {
+          // close enough
+          return maxDiv;
+        }
       }
     }
   }
-
   return maxDiv;
 }
 
@@ -306,8 +305,6 @@ function draw() {
   let offsetY = (maxCanvasDim - canvas.height) / 2;
   let offsetX = (maxCanvasDim - canvas.width) / 2;
 
-  let smallestSample = Math.floor(maxCanvasDim / 250);
-
   let sampleCount = 0;
   function sample(x, y) {
     sampleCount++;
@@ -315,81 +312,133 @@ function draw() {
     return trace(objects, camPos, ray, lightPos);
   }
 
-  let step = smallestSample * 6;
-  for (let y = 0; y < canvas.height; y += step) {
-    const relY = 1 - (y + offsetY) / maxCanvasDim;
-    for (let x = 0; x < canvas.width; x += step) {
-      const relX = (x + offsetX) / maxCanvasDim;
-      const color = sample(relX, relY);
-      drawPixel(x, y, ...color);
-    }
-  }
+  let prevBuffer = null;
+  for (var step = 64; step >= 1; step = step / 2) {
+    const buffer = buffers[step];
+    const maxY = buffer.length;
+    const drawStep = step === 1;
+    const firstStep = !prevBuffer;
+    const maxDeviationForStep = maxDeviationPerStep[step];
 
-  let subStep = smallestSample * 3;
-  for (let y = 0; y < canvas.height; y += step) {
-    for (let x = 0; x < canvas.width; x += step) {
-      let a = getPixel(x, y);
-      let b = getPixel(x + step, y);
-      let c = getPixel(x, y + step);
-      let d = getPixel(x + step, y + step);
+    for (var y = 0; y < maxY; y++) {
+      const line = buffer[y];
 
-      const all = [];
-      if (a[0] !== undefined) all.push(a);
-      if (b[0] !== undefined) all.push(b);
-      if (c[0] !== undefined) all.push(c);
-      if (d[0] !== undefined) all.push(d);
+      const relY = 1 - (y * step + offsetY) / maxCanvasDim;
 
-      const avg = getAvg(all);
+      let prevLine = null;
+      let topLine = null;
+      let bottomLine = null;
 
-      const maxDeviation = findMaxDeviation(all, avg);
-
-      for (var yo = y; yo < y + step; yo += subStep) {
-        const relY = 1 - (yo + offsetY) / maxCanvasDim;
-        for (var xo = x; xo < x + step; xo += subStep) {
-          const relX = (xo + offsetX) / maxCanvasDim;
-          if (maxDeviation < 0.1) {
-            drawPixel(xo, yo, ...avg);
-          } else {
-            const color = sample(relX, relY);
-            drawPixel(xo, yo, ...color);
+      if (!firstStep) {
+        if (prevBuffer && y % 2 === 0) {
+          prevLine = prevBuffer[y / 2];
+        } else {
+          if (y > 2) {
+            topLine = prevBuffer[(y - 1) / 2];
+          }
+          if (y < buffer.length - 2) {
+            bottomLine = prevBuffer[(y + 1) / 2];
           }
         }
       }
-    }
-  }
 
-  step = subStep;
-  subStep = smallestSample;
-  for (let y = 0; y < canvas.height; y += step) {
-    for (let x = 0; x < canvas.width; x += step) {
-      let a = getPixel(x, y);
-      let b = getPixel(x + step, y);
-      let c = getPixel(x, y + step);
-      let d = getPixel(x + step, y + step);
+      const maxX = line.length;
+      for (var x = 0; x < maxX; x++) {
+        const relX = (x * step + offsetX) / maxCanvasDim;
 
-      const all = [];
-      if (a[0] !== undefined) all.push(a);
-      if (b[0] !== undefined) all.push(b);
-      if (c[0] !== undefined) all.push(c);
-      if (d[0] !== undefined) all.push(d);
+        if (firstStep) {
+          line[x] = sample(relX, relY);
+          continue;
+        }
 
-      const avg = getAvg(all);
+        let before;
+        let after;
+        let top;
+        let bottom;
+        let topLeft;
+        let topRight;
+        let bottomLeft;
+        let bottomRight;
 
-      const maxDeviation = findMaxDeviation(all, avg);
-
-      for (var yo = y; yo < y + step; yo += subStep) {
-        const relY = 1 - (yo + offsetY) / maxCanvasDim;
-        for (var xo = x; xo < x + step; xo += subStep) {
-          const relX = (xo + offsetX) / maxCanvasDim;
-          if (maxDeviation < 0.1) {
-            drawPixels(subStep, xo, yo, ...avg);
+        const even = x % 2 === 0;
+        if (prevLine) {
+          if (even) {
+            const color = prevLine[x / 2];
+            if (drawStep) {
+              drawPixel(x, y, ...color);
+            } else {
+              line[x] = color;
+              drawPixels(
+                step + 1,
+                x * step - step / 2,
+                y * step - step / 2,
+                ...color
+              );
+            }
+            continue;
           } else {
-            const color = sample(relX, relY);
-            drawPixels(subStep, xo, yo, ...color);
+            if (x > 2) {
+              before = prevLine[(x - 1) / 2];
+            }
+            if (x < line.length - 2) {
+              after = prevLine[(x + 1) / 2];
+            }
           }
+        } else {
+          if (even) {
+            if (topLine) {
+              top = topLine[x / 2];
+            }
+            if (bottomLine) {
+              bottom = bottomLine[x / 2];
+            }
+          } else {
+            if (topLine) {
+              topLeft = topLine[(x - 1) / 2];
+              topRight = topLine[(x + 1) / 2];
+            }
+            if (bottomLine) {
+              bottomLeft = bottomLine[(x - 1) / 2];
+              bottomRight = bottomLine[(x + 1) / 2];
+            }
+          }
+        }
+
+        const area = [];
+        if (before) area.push(before);
+        if (after) area.push(after);
+        if (top) area.push(top);
+        if (bottom) area.push(bottom);
+        if (topLeft) area.push(topLeft);
+        if (topRight) area.push(topRight);
+        if (bottomLeft) area.push(bottomLeft);
+        if (bottomRight) area.push(bottomRight);
+
+        const avg = getAvg(area);
+        const div = findMaxDeviation(area, avg);
+
+        let color;
+        if (div > maxDeviationForStep) {
+          color = sample(relX, relY);
+        } else {
+          color = avg;
+        }
+
+        if (drawStep) {
+          drawPixel(x, y, ...color);
+        } else {
+          line[x] = color;
+          drawPixels(
+            step + 1,
+            x * step - step / 2,
+            y * step - step / 2,
+            ...color
+          );
         }
       }
     }
+
+    prevBuffer = buffer;
   }
 
   console.log("sampleCount", sampleCount);
@@ -404,6 +453,22 @@ function resize() {
   let maxCanvasDim = Math.max(canvas.height, canvas.width);
 
   canvasData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  for (var step = 64; step >= 1; step = step / 2) {
+    const buffer = [];
+    buffers[step] = buffer;
+
+    const maxY = Math.ceil(canvas.height / step);
+    const maxX = Math.ceil(canvas.width / step);
+
+    for (var y = 0; y < maxY; y++) {
+      const line = [];
+      buffer[y] = line;
+      for (var x = 0; x < maxX; x++) {
+        line[x] = null;
+      }
+    }
+  }
 }
 
 resize();
