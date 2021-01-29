@@ -151,12 +151,12 @@ function lightIntensityDist(dist) {
   return 1 / (tmp * tmp);
 }
 
-function trace(objects, camPos, ray, lightPos) {
+function getAllIntersections(objects, origin, ray) {
   const allIntersections = [];
 
-  for (var i = 0; i < objects.length; i++) {
+  for (let i = 0; i < objects.length; i++) {
     const obj = objects[i];
-    const point = sphereIntersection(camPos, ray, obj.pos, obj.radius);
+    const point = sphereIntersection(origin, ray, obj.pos, obj.radius);
 
     if (point) {
       allIntersections.push({
@@ -168,8 +168,8 @@ function trace(objects, camPos, ray, lightPos) {
   }
 
   function compare(a, b) {
-    const aDistToCam = Math.hypot(...subVec(a.pos, camPos));
-    const bDistToCam = Math.hypot(...subVec(b.pos, camPos));
+    const aDistToCam = Math.hypot(...subVec(a.pos, origin));
+    const bDistToCam = Math.hypot(...subVec(b.pos, origin));
 
     if (aDistToCam > bDistToCam) {
       return -1;
@@ -180,26 +180,67 @@ function trace(objects, camPos, ray, lightPos) {
     return 0;
   }
 
+  allIntersections.sort(compare);
+
+  return allIntersections;
+}
+
+function mixColors(a, b, alpha) {
+  return addVec(mulScalar(a, 1 - alpha), mulScalar(b, alpha));
+}
+
+function getLightColor(shadowCasters) {
+  let lightColor = [255, 255, 255, 255];
+
+  if (shadowCasters.length !== 0) {
+    // lightColor = shadowCasters[0].color;
+    for (let i = 0; i < shadowCasters.length; i++) {
+      const alpha = shadowCasters[i].color[3] / 255;
+      lightColor = mixColors(
+        lightColor,
+        mulScalar(shadowCasters[i].color, 1 - alpha),
+        alpha
+      );
+    }
+  }
+
+  return lightColor;
+}
+
+function trace(objects, camPos, ray, lightPos) {
+  const allIntersections = getAllIntersections(objects, camPos, ray);
+
   // bg color
   let color = [255, 255, 255, 255];
-  for (var i = 0; i < allIntersections.length; i++) {
+  for (let i = 0; i < allIntersections.length; i++) {
     const intersection = allIntersections[i];
     const point = intersection.pos;
-    const toLight = subVec(lightPos, point);
+    const toLight = normalize(subVec(lightPos, point));
     const normal = normalize(subVec(point, intersection.center));
-    const angle = dot(normalize(toLight), normal);
+    const angle = dot(toLight, normal);
 
-    const brightness = Math.max(angle * 0.6 + 0.1, 0) + 0.3;
-    const colorAtInter = mulScalar(intersection.color, brightness);
+    let brightness = Math.max(angle * 0.3 + 0.4, 0) + 0.3;
+    let colorAtHit = mulScalar(intersection.color, brightness);
+
+    const colorDirectLight = getLightColor(
+      getAllIntersections(objects, point, toLight)
+    );
+    if (colorDirectLight) {
+      colorAtHit = mixColors(colorDirectLight, colorAtHit, 0.85);
+    }
+
+    const colorIndirectLight = getLightColor(
+      getAllIntersections(objects, point, normal)
+    );
+    if (colorIndirectLight) {
+      colorAtHit = mixColors(colorIndirectLight, colorAtHit, 0.95);
+    }
+
     const alpha = intersection.color[3] / 255;
-
     if (color) {
-      color = addVec(
-        mulScalar(color, 1 - alpha),
-        mulScalar(colorAtInter, alpha)
-      );
+      color = addVec(mulScalar(color, 1 - alpha), mulScalar(colorAtHit, alpha));
     } else {
-      color = colorAtInter;
+      color = colorAtHit;
     }
   }
 
@@ -209,7 +250,7 @@ function trace(objects, camPos, ray, lightPos) {
 function initAxisControls(dimensions) {
   let html = "";
   const names = ["X", "Y", "Z", "W", "V", "U", "T", "S", "R", "Q"];
-  for (var i = 0; i < dimensions; i++) {
+  for (let i = 0; i < dimensions; i++) {
     html += `
         <label>
             Camera ${names[i]}:
@@ -231,7 +272,7 @@ function initAxisControls(dimensions) {
   // }
 
   document.getElementById("axis").innerHTML = html;
-  for (var i = 0; i < dimensions; i++) {
+  for (let i = 0; i < dimensions; i++) {
     document.getElementById("axis-" + i).addEventListener("input", () => {
       document.getElementById("animation").checked = false;
     });
@@ -239,7 +280,7 @@ function initAxisControls(dimensions) {
 
   return {
     set(camPos) {
-      for (var i = 0; i < dimensions; i++) {
+      for (let i = 0; i < dimensions; i++) {
         document.getElementById("axis-" + i).value = camPos[i];
       }
     },
@@ -248,7 +289,7 @@ function initAxisControls(dimensions) {
     },
     get() {
       camPos = [];
-      for (var i = 0; i < dimensions; i++) {
+      for (let i = 0; i < dimensions; i++) {
         camPos[i] = parseFloat(document.getElementById("axis-" + i).value, 10);
       }
       return camPos;
@@ -257,14 +298,15 @@ function initAxisControls(dimensions) {
 }
 
 let lastT = 0;
-let sampleResolution = 80;
+let sampleResolution = 20;
 let dtAvg = 16;
 function start(dimensions) {
+  sampleResolution = 20;
   let sopped = false;
 
   function padVec(vec, filler = 0, dim = dimensions) {
     const res = [];
-    for (var i = 0; i < dim; i++) {
+    for (let i = 0; i < dim; i++) {
       res[i] = vec[i] === undefined ? filler : vec[i];
     }
     return res;
@@ -274,7 +316,7 @@ function start(dimensions) {
     const objects = [];
     const count = 2 ** dim;
     const outerR = 1;
-    for (var i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++) {
       // this is so dumm but it works
       const pos = i
         .toString(2)
@@ -298,11 +340,11 @@ function start(dimensions) {
   }
 
   let camPos = padVec([-10, 0, 0], -10);
-  const lightBasePos = padVec([-4, 0, 4], -3);
+  const lightBasePos = padVec([0, 0, 4], -3);
 
-  const objects = stackSpheres(dimensions);
+  const objectsOrg = stackSpheres(dimensions);
 
-  let axisControls = initAxisControls(dimensions);
+  const axisControls = initAxisControls(dimensions);
 
   function draw(t) {
     let dt = t - lastT;
@@ -329,6 +371,15 @@ function start(dimensions) {
       );
       axisControls.set(camPos);
     }
+
+    const objects = [
+      ...objectsOrg
+      // {
+      //   pos: lightPos,
+      //   radius: 0.1,
+      //   color: [230, 0, 0, 20]
+      // }
+    ];
 
     let offsetY = (minCanvasDim - canvas.height) / 2;
     let offsetX = (minCanvasDim - canvas.width) / 2;
@@ -413,9 +464,9 @@ function start(dimensions) {
       }
     }
 
-    stats.innerText = `stats: dt: ${dt.toFixed(2)}, avg: ${dtAvg.toFixed(
+    stats.innerText = `stats: dt: ${dt.toFixed(2)} ms, avg: ${dtAvg.toFixed(
       2
-    )}, samples: ${sampleCount}, res: ${sampleResolutionRound}`;
+    )} ms, samples: ${sampleCount}, res: ${sampleResolutionRound}`;
 
     if (!sopped) {
       updateCanvas();
@@ -445,7 +496,7 @@ let stop = start(4);
 document
   .getElementsByName("dimensions")[0]
   .addEventListener("change", event => {
-    const dimensions = Math.round(event.target.value);
+    const dimensions = Math.max(Math.round(event.target.value), 2);
     event.target.value = dimensions;
     stop();
     stop = start(dimensions);
