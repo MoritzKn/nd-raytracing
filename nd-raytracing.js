@@ -271,9 +271,11 @@ function initAxisControls(dimensions) {
   //   }, 1000);
   // }
 
+  let updated = false;
   document.getElementById("axis").innerHTML = html;
   for (let i = 0; i < dimensions; i++) {
     document.getElementById("axis-" + i).addEventListener("input", () => {
+      updated = true;
       document.getElementById("animation").checked = false;
     });
   }
@@ -281,11 +283,16 @@ function initAxisControls(dimensions) {
   return {
     set(camPos) {
       for (let i = 0; i < dimensions; i++) {
-        document.getElementById("axis-" + i).value = camPos[i];
+        document.getElementById("axis-" + i).value = camPos[i] || -6;
       }
     },
     userControl() {
       return !document.getElementById("animation").checked;
+    },
+    getUpdated() {
+      let hadUpdate = updated;
+      updated = false;
+      return hadUpdate;
     },
     get() {
       camPos = [];
@@ -296,6 +303,8 @@ function initAxisControls(dimensions) {
     }
   };
 }
+
+let camPos = [];
 
 let lastT = 0;
 let sampleResolution = 20;
@@ -339,27 +348,36 @@ function start(dimensions) {
     return objects;
   }
 
-  let camPos = padVec([-10, 0, 0], -10);
   const lightBasePos = padVec([0, 0, 4], -3);
 
   const objectsOrg = stackSpheres(dimensions);
 
   const axisControls = initAxisControls(dimensions);
+  axisControls.set(camPos);
 
   function draw(t) {
     let dt = t - lastT;
     dtAvg = (dtAvg * 30 + dt) / 31;
     lastT = t;
 
-    if (dtAvg < 26) {
-      sampleResolution = Math.min(sampleResolution * 1.1, 500);
-    } else if (dt > 33) {
-      sampleResolution = Math.max(sampleResolution * 0.9, 20);
+    if (!axisControls.userControl()) {
+      console.log("dyn sampleResolution");
+      if (dtAvg < 26) {
+        sampleResolution = Math.min(sampleResolution * 1.1, 500);
+      } else if (dt > 33) {
+        sampleResolution = Math.max(sampleResolution * 0.9, 20);
+      }
+    } else if (axisControls.getUpdated()) {
+      console.log("reset");
+      sampleResolution = 40;
+    } else if (sampleResolution < 240) {
+      console.log("sampleResolution", sampleResolution);
+      sampleResolution *= 1.25;
     }
 
     const lightPos = addVec(
       lightBasePos,
-      padVec(mulScalar(getRotation(t, 4 * 1000), 2), 0)
+      padVec(mulScalar(getRotation(t, 20 * 1000), 2), 0)
     );
 
     if (axisControls.userControl()) {
