@@ -302,8 +302,8 @@ function initAxisControls(dimensions) {
 let camPos = [];
 
 let lastT = 0;
-let sampleResolution = 20;
-let dtAvg = 16;
+let sampleResolution = 80;
+let dtAvg = 30;
 function start(dimensions) {
   sampleResolution = 20;
   let sopped = false;
@@ -320,6 +320,7 @@ function start(dimensions) {
     const objects = [];
     const count = 2 ** dim;
     const outerR = 1;
+
     for (let i = 0; i < count; i++) {
       // this is so dumm but it works
       const pos = i
@@ -335,6 +336,7 @@ function start(dimensions) {
         color: [40, 90, 255, 200]
       });
     }
+
     objects.push({
       pos: padVec([], 0),
       radius: Math.sqrt(dim) - outerR,
@@ -350,21 +352,29 @@ function start(dimensions) {
   const axisControls = initAxisControls(dimensions);
   axisControls.set(camPos);
 
+  if (axisControls.userControl()) {
+    dtAvg = 250;
+  }
+
   function draw(t) {
     const dt = t - lastT;
     dtAvg = (dtAvg * 30 + dt) / 31;
     lastT = t;
 
-    if (!axisControls.userControl()) {
-      if (dtAvg < 26) {
-        sampleResolution = Math.min(sampleResolution * 1.1, 500);
-      } else if (dt > 33) {
-        sampleResolution = Math.max(sampleResolution * 0.9, 20);
+    let targetDt = 30;
+    if (axisControls.userControl()) {
+      targetDt = 260;
+
+      if (axisControls.getUpdated()) {
+        // Snap to low res
+        sampleResolution = 40;
       }
-    } else if (axisControls.getUpdated()) {
-      sampleResolution = 40;
-    } else if (sampleResolution < 240) {
-      sampleResolution *= 1.25;
+    }
+
+    if (dtAvg < targetDt - 4) {
+      sampleResolution = Math.min(sampleResolution * 1.1, 400);
+    } else if (dt > targetDt + 4) {
+      sampleResolution = Math.max(sampleResolution * 0.9, 20);
     }
 
     const lightPos = addVec(
