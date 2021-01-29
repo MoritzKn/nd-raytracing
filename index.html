@@ -1,9 +1,105 @@
-<style>
-  body {
-    margin: 0;
-    overflow: hidden;
-  }
-</style>
-<canvas />
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <title>n dimensional raytracing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: monospace;
+        padding-bottom: 32px;
+        position: relative;
+        min-height: calc(100vh - 32px);
+      }
+      #wrapper {
+        width: 70vw;
+        height: calc(100vh - 250px);
+        margin: 0 auto;
+        margin-top: 16px;
+        overflow: hidden;
+        border: solid 1px hotpink;
+      }
+      #stats {
+        position: absolute;
+        bottom: 0;
+        left: 16px;
+        font-size: 10px;
+      }
+      #controls {
+        /* border: solid 1px hotpink; */
+        margin: 16px auto;
+        padding: 0 16px;
+        max-width: 640px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+      input {
+        text-align: right;
+        min-width: 8px;
+      }
+      input[type="range"] {
+        width: 210px;
+      }
+      @media (max-width: 680px) {
+        #wrapper {
+          height: calc(100vh - 350px);
+        }
+        label {
+          width: 100%;
+        }
+        #axisControls input[type="range"] {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="wrapper">
+      <canvas></canvas>
+    </div>
+    <div id="controls">
+      <label>
+        Dimensions:&nbsp;
+        <input type="number" name="dimensions" value="4" min="2" max="10" />
+      </label>
+      <label>
+        Animation:&nbsp;
+        <input type="checkbox" name="animation" id="animation" checked
+      /></label>
+      <label id="axis">
+        <label>
+          Camera X:
+          <input type="range" />
+        </label>
+        <label>
+          Camera Y:
+          <input type="range" />
+        </label>
+        <label>
+          Camera Z:
+          <input type="range" />
+        </label>
+        <label>
+          Camera W:
+          <input type="range" />
+        </label>
+      </label>
+    </div>
 
-<script type="text/javascript" src="./nd-raytracing.js"></script>
+    <div id="stats"></div>
+
+    <script type="text/javascript" src="./nd-raytracing.js"></script>
+  </body>
+</html>
