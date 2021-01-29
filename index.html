@@ -3,6 +3,13 @@
   <head>
     <title>n dimensional raytracing</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta
+      name="description"
+      content="A hacky javascript software renderer for raytracing n-dimensional spheres"
+    />
+    <meta property="og:image" content="./og.png" />
+
     <style>
       * {
         box-sizing: border-box;
@@ -10,6 +17,7 @@
       body {
         margin: 0;
         font-family: monospace;
+        font-size: 15px;
         padding-bottom: 32px;
         position: relative;
         min-height: calc(100vh - 32px);
@@ -22,11 +30,22 @@
         overflow: hidden;
         border: solid 1px hotpink;
       }
-      #stats {
+      #footer {
         position: absolute;
         bottom: 0;
         left: 16px;
-        font-size: 10px;
+        right: 16px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      #footer > * {
+        min-width: 200px;
+      }
+      #stats {
+        margin-bottom: 8px;
       }
       #controls {
         /* border: solid 1px hotpink; */
@@ -59,7 +78,7 @@
         label {
           width: 100%;
         }
-        #axisControls input[type="range"] {
+        input[type="range"] {
           width: 100%;
         }
       }
@@ -98,7 +117,14 @@
       </label>
     </div>
 
-    <div id="stats"></div>
+    <div id="footer">
+      <div id="stats"></div>
+      <div id="info">
+        Check out on
+        <a href="https://github.com/MoritzKn/nd-raytracing">GitHub</a> and
+        follow me on <a href="https://twitter.com/moritz_kn">Twitter</a>
+      </div>
+    </div>
 
     <script type="text/javascript" src="./nd-raytracing.js"></script>
   </body>

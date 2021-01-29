@@ -464,7 +464,7 @@ function start(dimensions) {
       }
     }
 
-    stats.innerText = `stats: dt: ${dt.toFixed(2)} ms, avg: ${dtAvg.toFixed(
+    stats.innerText = `Stats: dt: ${dt.toFixed(2)} ms, avg: ${dtAvg.toFixed(
       2
     )} ms, samples: ${sampleCount}, res: ${sampleResolutionRound}`;
 
