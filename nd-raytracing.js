@@ -151,7 +151,7 @@ function lightIntensityDist(dist) {
 function stackSpheres(dim) {
   const objects = [];
   const count = 2 ** dim;
-  const outerR = 0.95;
+  const outerR = 1;
   for (var i = 0; i < count; i++) {
     // this is so dumm but it works
     const pos = i
@@ -222,21 +222,21 @@ function trace(objects, camPos, ray, lightPos) {
 
 const dimension = 4;
 
-function padVec(vec, filler = 0) {
+function padVec(vec, filler = 0, dim = dimension) {
   const res = [];
-  for (var i = 0; i < dimension; i++) {
+  for (var i = 0; i < dim; i++) {
     res[i] = vec[i] === undefined ? filler : vec[i];
   }
   return res;
 }
 
-const camPos = padVec([-10, -2, 0], -10);
+let camPos = padVec([-10, 0, 0], -10);
 const lightBasePos = padVec([-4, 0, 4], -3);
 
 const objects = stackSpheres(dimension);
 
 let lastT = 0;
-let sampleResolution = 20;
+let sampleResolution = 80;
 let dtAvg = 16;
 function draw(t) {
   let dt = t - lastT;
@@ -254,6 +254,11 @@ function draw(t) {
     padVec(mulScalar(getRotation(t, 2000), 2), 0)
   );
 
+  camPos = addVec(
+    padVec([...mulScalar(getRotation(t, 10000), 10), 0], -10),
+    padVec([0, 0, getRotation(t, 6000)[1] * 2], 0)
+  );
+
   let maxCanvasDim = Math.max(canvas.height, canvas.width);
   let offsetY = (maxCanvasDim - canvas.height) / 2;
   let offsetX = (maxCanvasDim - canvas.width) / 2;
@@ -261,7 +266,22 @@ function draw(t) {
   let sampleCount = 0;
   function sample(x, y) {
     sampleCount++;
-    const ray = normalize(padVec([1, x - 0.5, y - 0.5], 1));
+    const camDir = normalize(
+      subVec(padVec([], 0, Math.min(dimension, 3)), camPos)
+    );
+    const ortCamDir = [-camDir[1], camDir[0]];
+    const posOnScree = [...mulScalar(ortCamDir, x - 0.5), y - 0.5];
+    const dir = addVec(camDir, padVec(posOnScree, 0));
+
+    // const camDir = normalize(subVec(padVec([], 0), camPos));
+    // const ortCamDirXy = normalize([-camDir[1], camDir[0]]);
+    // const posOnScreeY = [...mulScalar(ortCamDirXy, x - 0.5), 0];
+    // const ortCamDirYz = normalize([camDir[2], -camDir[1]]);
+    // const posOnScreeX = [0, ...mulScalar(ortCamDirYz, y - 0.5)];
+    // const dir = addVec(addVec(camDir, posOnScreeX), posOnScreeY);
+
+    const ray = normalize(padVec(dir, 1));
+    const rayO = normalize(padVec([1, x - 0.5, y - 0.5], 1));
     return trace(objects, camPos, ray, lightPos);
   }
 
