@@ -9,7 +9,7 @@ function drawPixel(x, y, r, g, b, a = 255) {
   canvasData.data[index + 0] = r;
   canvasData.data[index + 1] = g;
   canvasData.data[index + 2] = b;
-  canvasData.data[index + 3] = a;
+  canvasData.data[index + 3] = 255;
 }
 
 function getPixel(x, y) {
@@ -164,13 +164,13 @@ function stackSpheres(dim) {
     objects.push({
       pos,
       radius: outerR,
-      color: [40, 90, 255]
+      color: [40, 90, 255, 200]
     });
   }
   objects.push({
     pos: padVec([], 0),
     radius: Math.sqrt(dim) - outerR,
-    color: [255, 90, 40]
+    color: [255, 90, 40, 160]
   });
   return objects;
 }
@@ -191,36 +191,60 @@ function trace(objects, camPos, ray, lightPos) {
     }
   }
 
-  let firstIntersection = null;
-  let minDistToCam = Infinity;
+  function compare(a, b) {
+    const aDistToCam = Math.hypot(...subVec(a.pos, camPos));
+    const bDistToCam = Math.hypot(...subVec(b.pos, camPos));
 
+    if (aDistToCam > bDistToCam) {
+      return -1;
+    }
+    if (aDistToCam < bDistToCam) {
+      return 1;
+    }
+    return 0;
+  }
+
+  // let firstIntersection = null;
+  // let minDistToCam = Infinity;
+  //
+  // for (var i = 0; i < allIntersections.length; i++) {
+  //   const intersection = allIntersections[i];
+  //   const toCam = subVec(intersection.pos, camPos);
+  //   const distToCam = Math.hypot(...toCam);
+  //
+  //   if (minDistToCam > distToCam) {
+  //     minDistToCam = distToCam;
+  //     firstIntersection = intersection;
+  //   }
+  // }
+
+  // bg color
+  let color = [255, 255, 255, 255];
   for (var i = 0; i < allIntersections.length; i++) {
     const intersection = allIntersections[i];
-    const toCam = subVec(intersection.pos, camPos);
-    const distToCam = Math.hypot(...toCam);
+    const point = intersection.pos;
+    const toLight = subVec(lightPos, point);
+    const normal = normalize(subVec(point, intersection.center));
+    const angle = dot(normalize(toLight), normal);
 
-    if (minDistToCam > distToCam) {
-      minDistToCam = distToCam;
-      firstIntersection = intersection;
+    const brightness = Math.max(angle * 0.6 + 0.1, 0) + 0.3;
+    const colorAtInter = mulScalar(intersection.color, brightness);
+    const alpha = intersection.color[3] / 255;
+
+    if (color) {
+      color = addVec(
+        mulScalar(color, 1 - alpha),
+        mulScalar(colorAtInter, alpha)
+      );
+    } else {
+      color = colorAtInter;
     }
   }
 
-  if (firstIntersection) {
-    const point = firstIntersection.pos;
-    const toLight = subVec(lightPos, point);
-    const normal = normalize(subVec(point, firstIntersection.center));
-    const angle = dot(normalize(toLight), normal);
-
-    const brightness = Math.max(angle * 0.7 + 0.1, 0) + 0.2;
-
-    return mulScalar(firstIntersection.color, brightness);
-  }
-
-  // bg color
-  return [220, 220, 220, 255];
+  return color;
 }
 
-const dimension = 4;
+const dimension = 6;
 
 function padVec(vec, filler = 0, dim = dimension) {
   const res = [];
@@ -243,20 +267,20 @@ function draw(t) {
   dtAvg = (dtAvg * 60 + dt) / 61;
   lastT = t;
 
-  if (dtAvg < 22) {
+  if (dtAvg < 26) {
     sampleResolution = Math.min(sampleResolution * 1.01, 500);
-  } else if (dt > 40) {
+  } else if (dt > 33) {
     sampleResolution = Math.max(sampleResolution * 0.99, 20);
   }
 
   const lightPos = addVec(
     lightBasePos,
-    padVec(mulScalar(getRotation(t, 2000), 2), 0)
+    padVec(mulScalar(getRotation(t, 4 * 1000), 2), 0)
   );
 
   camPos = addVec(
-    padVec([...mulScalar(getRotation(t, 10000), 10), 0], -10),
-    padVec([0, 0, getRotation(t, 6000)[1] * 2], 0)
+    padVec([...mulScalar(getRotation(t, 12 * 1000), 8), 0, -8], -8),
+    padVec([0, 0, ...mulScalar(getRotation(t, 6 * 1000), 2)], 0)
   );
 
   let maxCanvasDim = Math.max(canvas.height, canvas.width);
