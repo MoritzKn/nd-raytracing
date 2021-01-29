@@ -361,17 +361,14 @@ function start(dimensions) {
     lastT = t;
 
     if (!axisControls.userControl()) {
-      console.log("dyn sampleResolution");
       if (dtAvg < 26) {
         sampleResolution = Math.min(sampleResolution * 1.1, 500);
       } else if (dt > 33) {
         sampleResolution = Math.max(sampleResolution * 0.9, 20);
       }
     } else if (axisControls.getUpdated()) {
-      console.log("reset");
       sampleResolution = 40;
     } else if (sampleResolution < 240) {
-      console.log("sampleResolution", sampleResolution);
       sampleResolution *= 1.25;
     }
 
