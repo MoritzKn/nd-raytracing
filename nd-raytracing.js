@@ -220,7 +220,7 @@ function trace(objects, camPos, ray, lightPos) {
   return [220, 220, 220, 255];
 }
 
-const dimension = 3;
+const dimension = 4;
 
 function padVec(vec, filler = 0) {
   const res = [];
@@ -236,8 +236,18 @@ const lightBasePos = padVec([-4, 0, 4], -3);
 const objects = stackSpheres(dimension);
 
 let lastT = 0;
+let sampleResolution = 20;
+let dtAvg = 16;
 function draw(t) {
   let dt = t - lastT;
+  dtAvg = (dtAvg * 60 + dt) / 61;
+  lastT = t;
+
+  if (dtAvg < 22) {
+    sampleResolution = Math.min(sampleResolution * 1.01, 500);
+  } else if (dt > 40) {
+    sampleResolution = Math.max(sampleResolution * 0.99, 20);
+  }
 
   const lightPos = addVec(
     lightBasePos,
@@ -255,7 +265,8 @@ function draw(t) {
     return trace(objects, camPos, ray, lightPos);
   }
 
-  let step = Math.round(maxCanvasDim / 200);
+  const sampleResolutionRound = Math.round(sampleResolution / 10) * 10;
+  let step = Math.round(maxCanvasDim / sampleResolutionRound);
   for (let y = 0; y < canvas.height; y += step) {
     const relY = 1 - (y + offsetY) / maxCanvasDim;
 
@@ -305,7 +316,11 @@ function draw(t) {
     }
   }
 
-  console.log("sampleCount", sampleCount);
+  console.log(
+    `stats: dt: ${dt.toFixed(2)}, avg: ${dtAvg.toFixed(
+      2
+    )}, samples: ${sampleCount}, res: ${sampleResolutionRound}`
+  );
 
   updateCanvas();
   requestAnimationFrame(draw);
