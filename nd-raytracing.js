@@ -4,7 +4,6 @@ const wrapper = document.getElementById("wrapper");
 const ctx = canvas.getContext("2d");
 let minCanvasDim;
 let canvasData;
-let buffers = {};
 
 function drawPixel(x, y, r, g, b, a = 255) {
   const index = (x + y * canvas.width) * 4;
@@ -102,12 +101,8 @@ function sphereIntersection(origin, ray, spherePos, sphereR) {
   if (tc > 0) {
     const originToSphereLen = Math.hypot(...originToSphere);
 
-    // throw { originToSphereLen, tc, originToSphere };
-
     // center of sphere to ray
     const d = Math.sqrt(originToSphereLen * originToSphereLen - tc * tc);
-
-    // return originToSphereLen - tc;
 
     // if we hit the sphere
     if (d < sphereR) {
@@ -219,7 +214,7 @@ function trace(objects, camPos, ray, lightPos) {
     const normal = normalize(subVec(point, intersection.center));
     const angle = dot(toLight, normal);
 
-    let brightness = Math.max(angle * 0.3 + 0.4, 0) + 0.3;
+    const brightness = Math.max(angle * 0.3 + 0.4, 0) + 0.3;
     let colorAtHit = mulScalar(intersection.color, brightness);
 
     const colorDirectLight = getLightColor(
@@ -274,7 +269,7 @@ function initAxisControls(dimensions) {
   let updated = false;
   document.getElementById("axis").innerHTML = html;
   for (let i = 0; i < dimensions; i++) {
-    document.getElementById("axis-" + i).addEventListener("input", () => {
+    document.getElementById(`axis-${i}`).addEventListener("input", () => {
       updated = true;
       document.getElementById("animation").checked = false;
     });
@@ -283,21 +278,21 @@ function initAxisControls(dimensions) {
   return {
     set(camPos) {
       for (let i = 0; i < dimensions; i++) {
-        document.getElementById("axis-" + i).value = camPos[i] || -6;
+        document.getElementById(`axis-${i}`).value = camPos[i] || -6;
       }
     },
     userControl() {
       return !document.getElementById("animation").checked;
     },
     getUpdated() {
-      let hadUpdate = updated;
+      const hadUpdate = updated;
       updated = false;
       return hadUpdate;
     },
     get() {
-      camPos = [];
+      const camPos = [];
       for (let i = 0; i < dimensions; i++) {
-        camPos[i] = parseFloat(document.getElementById("axis-" + i).value, 10);
+        camPos[i] = parseFloat(document.getElementById(`axis-${i}`).value, 10);
       }
       return camPos;
     }
@@ -356,7 +351,7 @@ function start(dimensions) {
   axisControls.set(camPos);
 
   function draw(t) {
-    let dt = t - lastT;
+    const dt = t - lastT;
     dtAvg = (dtAvg * 30 + dt) / 31;
     lastT = t;
 
@@ -396,8 +391,8 @@ function start(dimensions) {
       // }
     ];
 
-    let offsetY = (minCanvasDim - canvas.height) / 2;
-    let offsetX = (minCanvasDim - canvas.width) / 2;
+    const offsetY = (minCanvasDim - canvas.height) / 2;
+    const offsetX = (minCanvasDim - canvas.width) / 2;
 
     function scaleCenter(n, m) {
       return n * m - m / 2;
@@ -416,6 +411,7 @@ function start(dimensions) {
       ];
       const dir = addVec(camDir, padVec(posOnScree, 0));
 
+      // FIXME: the current impl would probably look something like this... just not quite...
       // const camDir = normalize(subVec(padVec([], 0), camPos));
       // const ortCamDirXy = normalize([-camDir[1], camDir[0]]);
       // const posOnScreeY = [...mulScalar(ortCamDirXy, x - 0.5), 0];
@@ -424,12 +420,12 @@ function start(dimensions) {
       // const dir = addVec(addVec(camDir, posOnScreeX), posOnScreeY);
 
       const ray = normalize(padVec(dir, 1));
-      const rayO = normalize(padVec([1, x - 0.5, y - 0.5], 1));
+      // const rayO = normalize(padVec([1, x - 0.5, y - 0.5], 1));
       return trace(objects, camPos, ray, lightPos);
     }
 
     const sampleResolutionRound = Math.round(sampleResolution / 10) * 10;
-    let step = Math.round(minCanvasDim / sampleResolutionRound);
+    const step = Math.round(minCanvasDim / sampleResolutionRound);
     for (let y = 0; y < canvas.height; y += step) {
       const relY = 1 - (y + offsetY) / minCanvasDim;
 
@@ -440,8 +436,8 @@ function start(dimensions) {
       }
 
       for (let x = step * 1; x < canvas.width; x += step * 4) {
-        let prev = getPixel(x - step * 1, y);
-        let next = getPixel(x + step * 3, y);
+        const prev = getPixel(x - step * 1, y);
+        const next = getPixel(x + step * 3, y);
 
         if (colorEq(prev, next)) {
           drawPixels(step, x, y, ...prev);
@@ -453,8 +449,8 @@ function start(dimensions) {
       }
 
       for (let x = step * 2; x < canvas.width; x += step * 4) {
-        let prev = getPixel(x - step * 2, y);
-        let next = getPixel(x + step * 2, y);
+        const prev = getPixel(x - step * 2, y);
+        const next = getPixel(x + step * 2, y);
 
         if (colorEq(prev, next)) {
           drawPixels(step, x, y, ...prev);
@@ -466,8 +462,8 @@ function start(dimensions) {
       }
 
       for (let x = step * 3; x < canvas.width; x += step * 4) {
-        let prev = getPixel(x - step * 3, y);
-        let next = getPixel(x + step * 1, y);
+        const prev = getPixel(x - step * 3, y);
+        const next = getPixel(x + step * 1, y);
 
         if (colorEq(prev, next)) {
           drawPixels(step, x, y, ...prev);
